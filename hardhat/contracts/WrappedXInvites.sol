@@ -40,7 +40,7 @@ abstract contract IX {
     mapping(address => bool) public allowlist;
 }
 
-contract WrappedXInvites is ERC721, IX {
+contract WrappedXInvites is ERC721 {
     using Strings for uint256;
     using Counters for Counters.Counter;
 
@@ -61,7 +61,7 @@ contract WrappedXInvites is ERC721, IX {
     /// Access Control Modifiers
 
     /**
-    * @dev Throws if msg.sender never set the minimum allowance
+    * @dev Throws if msg.sender never doesn't have at least .01 $X
     */
     modifier onlyWhenBalanceIsSufficient() {
         require(X_token_contract.balanceOf(msg.sender) >= 1, "You need at least .01 $X");
@@ -69,7 +69,7 @@ contract WrappedXInvites is ERC721, IX {
     }
 
     /**
-    * @dev Throws if msg.sender never doesn't have at least .01 $X
+    * @dev Throws if msg.sender never set the minimum allowance
     */
     modifier onlyWhenAllowed() {
         require(X_token_contract.allowance(msg.sender, address(this)) >= 1, "This contract is not approved to transfer .01 $X");
