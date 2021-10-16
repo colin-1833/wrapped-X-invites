@@ -1,0 +1,10 @@
+{
+  "name": "wrappedx",
+  "license": "MIT",
+  "scripts": {
+    "deploy-hardhat": "cd hardhat && yarn deploy-hardhat",
+    "deploy-ropsten": "cd hardhat && yarn deploy-ropsten",
+    "deploy-mainnet": "cd hardhat && yarn deploy-mainnet",
+    "test": "cd hardhat && yarn test"
+  }
+}
