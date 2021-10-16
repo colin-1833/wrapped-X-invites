@@ -58,6 +58,14 @@ contract WrappedXInvites is ERC721 {
         custom_uri_base = _custom_uri_base;
     }
 
+    /// Events
+
+    event UpdatedURIBase(string _uri_base);
+    event ChangedURIAdmin(address _uri_admin);
+    event LockedURI(string _final_uri_base);
+    event MintedInvite(address _minter, uint256 _token_id, address _invite_holding_address);
+    event UsedInvite(address _user, uint256 _token_id);
+
     /// Access Control Modifiers
 
     /**
@@ -96,11 +104,23 @@ contract WrappedXInvites is ERC721 {
     /// Public Methods
 
     /**
+    * @dev Changes the URI base. EX: moving visual assets to a new server and maybe new domain
+    */
+    function updateURIBase(string memory _custom_uri_base) external {
+        require(msg.sender == uri_admin, "You must be the owner to do that");
+        custom_uri_base = _custom_uri_base;
+
+        emit UpdatedURIBase(custom_uri_base);
+    }
+
+    /**
     * @dev Changes the address responsible for managing the URI base
     */
     function updateURIAdmin(address _uri_admin) external onlyURIAdmin() {
         require(_uri_admin != address(0), "You cannot change the uri_admin to an empty address");
         uri_admin = _uri_admin;
+
+        emit ChangedURIAdmin(uri_admin);
     }
 
     /**
@@ -108,14 +128,8 @@ contract WrappedXInvites is ERC721 {
     */
     function lockURI() external onlyURIAdmin() {
         uri_admin = address(0);
-    }
 
-    /**
-    * @dev Changes the URI base. EX: moving visual assets to a new server and maybe new domain
-    */
-    function updateURIBase(string memory _custom_uri_base) external {
-        require(msg.sender == uri_admin, "You must be the owner to do that");
-        custom_uri_base = _custom_uri_base;
+        emit LockedURI(custom_uri_base);
     }
 
     /**
@@ -132,6 +146,8 @@ contract WrappedXInvites is ERC721 {
 
         // send .01 $X tokens to the contract created above
         X_token_contract.transferFrom(msg.sender, invite_holding_addresses[token_id], 1);
+
+        emit MintedInvite(msg.sender, token_id, invite_holding_addresses[token_id]);
 
         return token_id;
     }
@@ -150,6 +166,8 @@ contract WrappedXInvites is ERC721 {
         // the holding contract sends the .01 $X to msg.sender
         // NOTE: this automatically invites msg.sender if they have not been invited yet!
         IInviteContract(invite_holding_addresses[token_id]).redeem(msg.sender);
+
+        emit UsedInvite(msg.sender, token_id);
 
         // redeposit the .01 $ now that msg.sender is invited and mint msg.sender a new NFT with the same functionality as the previous one
         mintInviteNFT();
