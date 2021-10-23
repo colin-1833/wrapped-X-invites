@@ -30,6 +30,10 @@ export const get_accounts = (hre: HardhatRuntimeEnvironment): Promise<Accounts> 
     });
 } catch (err) { reject(err) }});
 
+export const format_eth = (eth: BigNumber) => Number((Number(ethers.utils.formatUnits(eth))).toFixed(10));
+
+export const parse_eth = (num: number) => ethers.utils.parseEther(String(num))
+
 export type UseContract = (signer: Signer) => Contract;
 
 export const deploy = (

@@ -45,6 +45,8 @@ contract WrappedXInvites is ERC721 {
     using Counters for Counters.Counter;
 
     Counters.Counter private token_ids;
+    address payable dev_fee_collector;
+    uint256 dev_fee = .05 ether;
     address uri_admin;
     string custom_uri_base;
     mapping(uint256 => address) invite_holding_addresses;
@@ -55,11 +57,14 @@ contract WrappedXInvites is ERC721 {
         X_token_contract = IERC20(_X_token_address);
         X_token_address = _X_token_address;
         uri_admin = msg.sender;
+        dev_fee_collector = payable(msg.sender);
         custom_uri_base = _custom_uri_base;
     }
 
     /// Events
 
+    event UpdateDevFee(uint256 _dev_fee);
+    event ChangedDevFeeCollector(address _dev_fee_collector);
     event UpdatedURIBase(string _uri_base);
     event ChangedURIAdmin(address _uri_admin);
     event LockedURI(string _final_uri_base);
@@ -100,14 +105,41 @@ contract WrappedXInvites is ERC721 {
         require(msg.sender == uri_admin, "You must be the uri_admin to do that");
         _;
     }
+
+    /**
+    * @dev Throws if msg.sender is not the dev fee collector
+    */
+    modifier onlyDevFeeCollector() {
+        require(msg.sender == dev_fee_collector, "You must be the dev fee collector");
+        _;
+    }
     
     /// Public Methods
 
     /**
+    * @dev Changes fee for minting or using an invite NFT.
+    */
+    function updateDevFee(uint256 _dev_fee) external onlyDevFeeCollector() {
+        require(_dev_fee >= 0, "Dev fee must not be negative");
+        dev_fee = _dev_fee;
+
+        emit UpdateDevFee(dev_fee);
+    }
+
+    /**
+    * @dev Changes the address that recieves the dev fees
+    */
+    function updateDevFeeCollector(address payable _dev_fee_collector) external onlyDevFeeCollector() {
+        require(_dev_fee_collector != address(0), "You cannot change the dev_fee_collector to an empty address");
+        dev_fee_collector = _dev_fee_collector;
+
+        emit ChangedDevFeeCollector(uri_admin);
+    }
+
+    /**
     * @dev Changes the URI base. EX: moving visual assets to a new server and maybe new domain
     */
-    function updateURIBase(string memory _custom_uri_base) external {
-        require(msg.sender == uri_admin, "You must be the owner to do that");
+    function updateURIBase(string memory _custom_uri_base) external onlyURIAdmin() {
         custom_uri_base = _custom_uri_base;
 
         emit UpdatedURIBase(custom_uri_base);
@@ -132,10 +164,7 @@ contract WrappedXInvites is ERC721 {
         emit LockedURI(custom_uri_base);
     }
 
-    /**
-    * @dev Mints an NFT that represents .01 $X and exactly one invite. Easy to list on OpenSea
-    */
-    function mintInviteNFT() public onlyWhenAllowed() onlyWhenBalanceIsSufficient() returns(uint256 _nft_id) {
+    function _mintInvite() internal returns(uint256) {
         // increment the counter and mint an nft representing 1 invite and .01 $x
         token_ids.increment();
         uint256 token_id = token_ids.current();
@@ -146,16 +175,34 @@ contract WrappedXInvites is ERC721 {
 
         // send .01 $X tokens to the contract created above
         X_token_contract.transferFrom(msg.sender, invite_holding_addresses[token_id], 1);
-
         emit MintedInvite(msg.sender, token_id, invite_holding_addresses[token_id]);
 
         return token_id;
     }
 
     /**
+    * @dev Mints an NFT that represents .01 $X and exactly one invite. Easy to list on OpenSea
+    */
+    function mintInviteNFT() payable public onlyWhenAllowed() onlyWhenBalanceIsSufficient() returns(uint256 _nft_id) {
+        // ensure the correct amount is paid to the dev fee collector
+        require(msg.value == dev_fee, "Invalid dev fee supplied");
+        
+        (uint256 _next_nft_id) = _mintInvite();
+
+        // send the dev fee to the dev fee collector 
+        (bool sent,) = dev_fee_collector.call{ value: msg.value }("");
+        require(sent, "Failed to send fees to dev_fee_collector");
+
+        return _next_nft_id;
+    }
+
+    /**
     * @dev Destroys NFT, sends .01 $X to msg.sender, moves .01 into a new invite holding address, issues msg.sender a new NFT representing one $X invite
     */
-    function useAndGenerateInviteNFT(uint256 token_id) external onlyValidNFTOwner(token_id) onlyWhenAllowed() {
+    function useAndGenerateInviteNFT(uint256 token_id) payable public onlyValidNFTOwner(token_id) onlyWhenAllowed() returns(uint256 _next_nft_id) {
+        // ensure the correct amount is paid to the dev fee collector
+        require(msg.value == dev_fee, "Invalid dev fee supplied");
+        
         // we don't want to waste invites, so only accounts that have not already been invited can call this
         // if you bought an invite but have no use for it, you can transfer for it someone else, or list it for sale
         // this allows people to speculate on invites???
@@ -170,10 +217,16 @@ contract WrappedXInvites is ERC721 {
         emit UsedInvite(msg.sender, token_id);
 
         // redeposit the .01 $ now that msg.sender is invited and mint msg.sender a new NFT with the same functionality as the previous one
-        mintInviteNFT();
+        (uint256 next_nft_id) = _mintInvite();
 
         // destroy this NFT so it can't be traded further
         _burn(token_id);
+
+        // send the dev fee to the dev fee collector 
+        (bool sent,) = dev_fee_collector.call{ value: msg.value }("");
+        require(sent, "Failed to send fees to dev_fee_collector");
+
+        return next_nft_id;
     }
 
     /**

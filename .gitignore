@@ -3,5 +3,4 @@ cache
 artifacts
 archive
 .env
-.env.*
 .working.*
