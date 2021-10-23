@@ -33,8 +33,5 @@ Any holder of $X that has not yet spent their invite can mint an NFT using the W
 * But, because Kelly successfully called **useAndGenerateInviteNFT(1)** above, she can now buy $X on any exchange she wants
 * Since Kelly doesn't need NFT #2, she can relist it on Opensea and recoup here original investment
 
-# Are there fees?
-No. Just gas on the Ethereum network.
-
 # Motivation 
 Before a market arises for $X, the unspent invites are by far the most valuable aspect of $X. By locking away the least amount of $X possible to create invite NFTs, price discovery on platforms like Opensea is possible. Furthermore, price discover for invites to $X will ultimately incentive inviting new $X holders, growing the $X user base. 
