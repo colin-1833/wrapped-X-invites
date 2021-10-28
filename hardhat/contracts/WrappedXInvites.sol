@@ -38,6 +38,7 @@ contract InviteContract is IInviteContract {
 
 abstract contract IX {
     mapping(address => bool) public allowlist;
+    mapping(address => bool) public invitationSpent;
 }
 
 contract WrappedXInvites is ERC721 {
@@ -165,6 +166,8 @@ contract WrappedXInvites is ERC721 {
     }
 
     function _mintInvite() internal returns(uint256) {
+        require(IX(X_token_address).invitationSpent(msg.sender) == false, "You already spent your invite and cannot mint a new NFT");
+        
         // increment the counter and mint an nft representing 1 invite and .01 $x
         token_ids.increment();
         uint256 token_id = token_ids.current();
